@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+import os
+import sys
+import time
+import socket
+
+class SCPI:
+
+	def __init__(self, host, port=8003):
+		self.host = host
+		self.port = port
+		self.status = "OK"
+
+	def connect(self):
+		result = False
+		try:
+			self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.sock.connect((self.host, self.port))
+			self.devid = self.identify()
+			if len(self.devid) != 4 or self.devid[0] != 'LAMBDA':
+				self.status = rsp
+			else:
+				result = True
+		except socket.error, e:
+			self.status = e.msg
+
+		return result
+
+	def close(self):
+		self.sock.close()
+
+	def __str__(self):
+		return self.status
+
+	def command(self, cmd, response=True):
+		self.sock.sendall(cmd+'\r')
+		#print "-> %s" % cmd
+		if response:
+			buf = self.sock.recv(1024)
+			buf = buf.strip()
+			#print "<- %s" % buf.strip()
+		else:
+			buf = ""
+		return buf
+
+	def identify(self):
+		rsp = self.command('*IDN?')
+		return rsp.split(',')
+
+	def get_output(self):
+		result = []
+		rsp = self.command('OUTP:STAT?')
+		result.append(rsp)
+		rsp  = self.command('MEAS:VOLT?')
+		result.append(float(rsp))
+		rsp  = self.command('MEAS:CURR?')
+		result.append(float(rsp))
+		return tuple(result)
+
+	def output_on(self):
+		rsp = self.command('OUTP:STATE 1', False)
+
+	def output_off(self):
+		rsp = self.command('OUTP:STATE 0', False)
+
+# end SCPI
+
+
+
+#===========================================================================
+# MAIN
+#===========================================================================
+
+def main(argv):
+	if len(argv) < 2:
+		print "usage: %s <host> [on | off | cycle]" % os.path.basename(argv[0])
+		sys.exit(1)
+
+	host = argv[1]
+
+	if len(argv) < 3:
+		cmd = "status"
+	else:
+		cmd = argv[2]
+
+	scpi = SCPI(host)
+	if not scpi.connect():
+		print "Failed to connect: %s" % scpi
+		sys.exit(1)
+	if cmd == 'status':
+		print "Connected to %s @ %s (%s)" % (scpi.devid[1], host, scpi.devid[3])
+		outp = scpi.get_output()
+		print "%s (%.2fV, %.2fA)" % outp
+	elif cmd == 'on':
+		scpi.output_on()
+	elif cmd == 'off':
+		scpi.output_off()
+	elif cmd == 'cycle':
+	 	state = scpi.get_output()
+                print "Current state: %s" % state[0]
+	 	if state[0] == 'ON':
+                        print "Power OFF"
+			scpi.output_off()
+			time.sleep(3)
+                print "Power ON"
+		scpi.output_on()
+                time.sleep(1)
+		outp = scpi.get_output()
+		print "%s (%.2fV, %.2fA)" % outp
+	else:
+		print "Unknown command '%s'" % cmd
+
+        scpi.close()
+# main
+
+if __name__ == '__main__':
+	main(sys.argv)

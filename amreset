@@ -1,0 +1,30 @@
+#!/bin/bash
+[ -z "$1" ] && exit
+
+case "$1" in
+    "--por")
+        LINE=DO_0
+        L0="on"
+        L1="off"
+        DELAY=3
+        shift
+        echo "Power-On reset $1"
+        ;;
+    "--ts")
+        LINE=DO_7
+        L0="off"
+        L1="on"
+        DELAY=3
+        shift
+        echo "Terminal server reset $1"
+    *)
+        LINE=DO_1
+        L0="on"
+        L1="off"
+        DELAY=1
+        echo "Chip Reset $1"
+esac
+
+wget --no-proxy -q -O /dev/null "http://$1/DOCTL.CGI?${LINE}=${L0}&DO_3=on&DO_5=on"
+sleep ${DELAY}
+wget --no-proxy -q -O /dev/null "http://$1/DOCTL.CGI?${LINE}=${L1}&DO_3=on&DO_5=on"
