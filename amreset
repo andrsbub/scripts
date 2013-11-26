@@ -17,6 +17,7 @@ case "$1" in
         DELAY=3
         shift
         echo "Terminal server reset $1"
+	;;
     *)
         LINE=DO_1
         L0="on"
