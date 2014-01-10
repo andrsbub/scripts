@@ -1,0 +1,6 @@
+#!/bin/bash
+echo "Checking for $1 in Kconfig"
+find . -name Kconfig\* -exec grep "$1" {} /dev/null \;
+echo "Checking for CONFIG_$1 in tree"
+grep -r CONFIG_$1 .
+
