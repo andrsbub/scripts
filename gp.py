@@ -209,8 +209,6 @@ long_opts = [
     ]
 
 opts, args = getopt.getopt(sys.argv[1:], None, long_opts)
-print "opts=%s" % opts
-print "args=%s" % args
 for opt, optarg in opts:
     if opt == '--kernel':
         vmlinux = optarg
