@@ -3,6 +3,7 @@ import re
 import sys
 import struct
 import subprocess
+import getopt
 import pexpect
 
 logsize   = (64<<10)
@@ -159,7 +160,7 @@ class ghprobe:
                         print "read_word: Failed\n%s\n" % output
                 return result
 
-        def read_block(c, addr, n):
+        def read_block(self, addr, n):
                 result = ""
                 output = self.do_command("md s1 %#x %u" % (addr, n)) 
                 for line in output.split("\n"):
@@ -180,31 +181,58 @@ class ghprobe:
                         r2 = self.getreg('r2')
                         r3 = self.getreg('r3')
                         r4 = self.getreg('r4')
+                        r11 = self.getreg('r11')
                         r12 = self.getreg('r12')
                         if r4 > 0xc0000000 and r4 < 0xd0000000:
                             w = self.read_word(r4)
-                            ts = self.read_word(r4+4)
-                            cpu = self.read_word(r4+8)
+                            ts = self.read_word(r4+8) + (self.read_word(r4+12) << 32)
+                            cpu = self.read_word(r4+16)
                         else:
                             w = 0
                             ts = 0
                             cpu = -1
-			print "core%d: pc=%s lr=0x%08x r2=0x%08x r3=0x%08x r4=%s r12=0x%08x ts=0x%08x cpu=%#x [r4]=0x%08x" % (core,self.addr2func(pc),lr,r2,r3,syms.name_of(r4),r12,ts, cpu, w)
+			print "core%d: pc=%s lr=0x%08x r2=0x%08x r3=0x%08x r4=%s r11=0x%08x r12=0x%08x ts=0x%08x cpu=%#x [r4]=0x%08x" % (core,self.addr2func(pc),lr,r2,r3,syms.name_of(r4),r11,r12,ts, cpu, w)
                         if False:
                             print "   %s" % self.addr2line(pc)
                             print "   %s" % self.addr2line(lr)
 
+#===========================================================================
+# MAIN
+#===========================================================================
+
+probe   = "ghprobe20410"
 vmlinux = "/home/aberg/git/lsigithub/vmlinux"
+
+long_opts = [
+        'host=',
+        'kernel=',
+    ]
+
+opts, args = getopt.getopt(sys.argv[1:], None, long_opts)
+print "opts=%s" % opts
+print "args=%s" % args
+for opt, optarg in opts:
+    if opt == '--kernel':
+        vmlinux = optarg
+    elif opt == '-probe':
+        probe = optarg
+
+if len(args) == 0:
+    print "No command specified"
+    sys.exit(1)
+
+print "Loading symbols from %s" % vmlinux
 syms = Symbols(vmlinux)
 
+print "Connecting to probe %s" % probe
 gh = ghprobe("ghprobe20410", vmlinux)
 gh.connect()
 gh.jtag_reset()
 gh.halt()
 
-if len(sys.argv) == 4 and sys.argv[1] == 'q':
-	addr_ring = int(sys.argv[2], 0)
-	addr_q    = int(sys.argv[3], 0)
+if len(args) == 3 and args[0] == 'q':
+	addr_ring = int(args[1], 0)
+	addr_q    = int(args[2], 0)
 	ring = []
 
 	buf = gh.read_block(addr_q, 128)
@@ -227,11 +255,11 @@ if len(sys.argv) == 4 and sys.argv[1] == 'q':
 		if i == (head & 0xfffff): ptrs += "<-head "
 		print "[%05x] %08x %4u/%4u %08x %08x %s" % ((addr_ring+i)&0xfffff, x[0],x[1],x[2],x[3],x[4], ptrs)
 		ring.append(x)
-elif len(sys.argv) > 1 and sys.argv[1] == "run":
+elif args[0] == "run":
         gh.run_all()
-elif len(sys.argv) > 1 and sys.argv[1] == "status":
+elif args[0] == "status":
 	gh.status_all()
-elif len(sys.argv) > 1 and sys.argv[1] == "dmesg":
+elif args[0] == "dmesg":
 	i=gh.read_word(syms.addr_of('log_first_idx'))
         iend=gh.read_word(syms.addr_of('log_next_idx'))
 	print "first=%u last=%u" % (i,iend)
