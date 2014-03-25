@@ -1,6 +1,7 @@
 #!/usr/bin/python
-import re
 import sys
+import os
+import re
 import struct
 import subprocess
 import getopt
@@ -15,7 +16,7 @@ sym_exp   = re.compile("\s+\d+:\s+([\da-f]+)\s+(\d+)\s(\S+)\s+\S+\s+\S+\s+\d+\s+
 class Symbols:
     def __init__(self, filename):
         self.filename = filename
-	self.by_name = {}	
+	self.by_name = {}
         self.by_addr = []
 	s = subprocess.Popen("arm-linux-gnueabi-readelf -s %s" % filename, shell=True, stdout=subprocess.PIPE)
 	for line in s.stdout:
@@ -201,7 +202,7 @@ class ghprobe:
 #===========================================================================
 
 probe   = "ghprobe20410"
-vmlinux = "/home/aberg/git/lsigithub/vmlinux"
+vmlinux = "vmlinux"
 
 long_opts = [
         'host=',
@@ -217,6 +218,10 @@ for opt, optarg in opts:
 
 if len(args) == 0:
     print "No command specified"
+    sys.exit(1)
+
+if not os.path.exists(vmlinux):
+    print "%s: File not found" % vmlinux
     sys.exit(1)
 
 print "Loading symbols from %s" % vmlinux
