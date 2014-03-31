@@ -9,15 +9,12 @@ DTB=$1
 if [ -z "$DTB" ]; then
   DTB=axm55xx
 fi
-if [ -r ./arch/arm/boot/dts/${DTB}.dtb ]; then
-  echo "Using prebuilt DTB"
-  cp ./arch/arm/boot/dts/${DTB}.dtb arch/arm/boot/current.dtb
-elif [ ! -r ./arch/arm/boot/dts/${DTB}.dts ]; then
+if [ ! -r ./arch/arm/boot/dts/${DTB}.dts ]; then
   echo "${DTB}.dts: Not found"
   exit 1
 else
-  echo "Building other DTB"
-  ./scripts/dtc/dtc -O dtb -R 32 -p 0x400 -o arch/arm/boot/current.dtb arch/arm/boot/dts/${DTB}.dts
+  echo "Building DTB"
+  make ${DTB}.dtb
 fi
 [ $? -eq 0 ] || exit $?
 
@@ -55,7 +52,7 @@ cat >$TMPFILE <<-EOF
 		};
 		fdt@1 {
 			description = "Flattened Device Tree blob";
-			data = /incbin/("./arch/arm/boot/current.dtb");
+			data = /incbin/("./arch/arm/boot/dts/${DTB}.dtb");
 			type = "flat_dt";
 			arch = "arm";
 			compression = "none";
